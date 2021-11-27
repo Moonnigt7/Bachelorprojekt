@@ -32,6 +32,7 @@ static esp_gattc_descr_elem_t *descr_elem_result = NULL;
  uint8_t remote_adress[6] = {0x00,0x00,0x00,0x00,0x00,0x00};
  uint8_t device_adress[] = {0xEB,0x76,0xBC,0xF0,0xC2,0x6F};
  uint8_t eq_adr = 1;
+ int8_t rssi_received = 0;
 
 
 
@@ -377,6 +378,8 @@ static esp_gattc_descr_elem_t *descr_elem_result = NULL;
              		if (connect == false) {
              		                        connect = true;
              		                        ESP_LOGI(GATTC_TAG, "connect to the remote device.");
+             		                       rssi_received =  scan_result->scan_rst.rssi;
+             		                      ESP_LOGI(GATTC_TAG, "RSSI: %d" , rssi_received);
              		                        esp_ble_gap_stop_scanning();
              		                        esp_ble_gattc_open(gl_profile_tab[PROFILE_A_APP_ID].gattc_if, scan_result->scan_rst.bda, scan_result->scan_rst.ble_addr_type, true);
              		                    }
