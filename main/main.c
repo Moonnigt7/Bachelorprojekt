@@ -16,6 +16,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/rmt.h"
+#include "esp_sleep.h"
+#include "driver/gpio.h"
 
 #define GATTC_TAG "BLE DEMO"
 #define REMOTE_SERVICE_UUID        0x180F //Batter Service
@@ -25,6 +27,9 @@
 #define INVALID_HANDLE   0
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
 #define RMT_TX_GPIO_NUM (4)
+
+#define GPIO_INPUT_IO_0     2
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0))
 
 static bool connect = false;
 static bool get_server = false;
@@ -70,6 +75,12 @@ static esp_bt_uuid_t notify_descr_uuid = { .len = ESP_UUID_LEN_16, .uuid = {
 		.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG, }, };
 
 static double calcRssiToMeter(uint8_t distanceMeter, int8_t rssi_received, int8_t txPower,  uint8_t envFactor);
+
+static void end(){
+	//esp_bluedroid_disable();
+	//esp_bt_controller_disable();
+	esp_light_sleep_start();
+}
 
 
 
@@ -355,6 +366,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event,
 	case ESP_GATTC_NOTIFY_EVT:
 		if (p_data->notify.is_notify) {
 			ESP_LOGI(GATTC_TAG, "ESP_GATTC_NOTIFY_EVT, receive notify value:");
+			end();
 		} else {
 			ESP_LOGI(GATTC_TAG,
 					"ESP_GATTC_NOTIFY_EVT, receive indicate value:");
@@ -587,6 +599,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
 //Programs entry point
 
 void app_main() {
+
+	  gpio_config_t io_conf = {};
+	  io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+	  io_conf.pull_up_en = 1;
+	  gpio_config(&io_conf);
+
 
 
 	// Initialize Non-Volatile-Storage
