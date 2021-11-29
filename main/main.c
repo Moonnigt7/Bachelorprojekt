@@ -509,6 +509,8 @@ void app_main() {
 		return;
 	}
 
+
+
 	//register the  callback function to the gap module, takes care of scanning and connection to servers
 	ret = esp_ble_gap_register_callback(esp_gap_cb);
 	if (ret) {
@@ -536,6 +538,7 @@ void app_main() {
 		ESP_LOGE(GATTC_TAG, "set local  MTU failed, error code = %x",
 				local_mtu_ret);
 	}
+
 
 }
 
