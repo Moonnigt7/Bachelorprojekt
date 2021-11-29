@@ -58,6 +58,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
 static void gattc_profile_event_handler(esp_gattc_cb_event_t event,
 		esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 
+static void end();
+
 static esp_bt_uuid_t remote_filter_service_uuid = { .len = ESP_UUID_LEN_16,
 		.uuid = { .uuid16 = REMOTE_SERVICE_UUID, }, };
 
@@ -82,25 +84,41 @@ struct gattc_profile_inst {
 	esp_bd_addr_t remote_bda;
 };
 
-static const rmt_item32_t morse_esp[] = {
-    // E: dot
+//static const rmt_item32_t tone_tens[] = {
+//
+//
+//    // Single
+//    {{{ 32767, 1, 32767, 0 }}}, // dot
+//    {{{ 32767, 1, 32767, 0 }}}, // dot
+//    {{{ 32767, 1, 32767, 0 }}}, // dot
+//    {{{ 32767, 0, 32767, 0 }}}, // SPACE
+//    // P : dot, dash, dash, dot
+//    {{{ 32767, 1, 32767, 0 }}}, // dot
+//    {{{ 32767, 1, 32767, 1 }}},
+//    {{{ 32767, 1, 32767, 0 }}}, // dash
+//    {{{ 32767, 1, 32767, 1 }}},
+//    {{{ 32767, 1, 32767, 0 }}}, // dash
+//    {{{ 32767, 1, 32767, 0 }}}, // dot
+//    // RMT end marker
+//    {{{ 0, 1, 0, 0 }}}
+//};
+
+static const rmt_item32_t tone_single[] = {
+    // Single
     {{{ 32767, 1, 32767, 0 }}}, // dot
-    {{{ 32767, 0, 32767, 0 }}}, // SPACE
-    // S : dot, dot, dot
-    {{{ 32767, 1, 32767, 0 }}}, // dot
-    {{{ 32767, 1, 32767, 0 }}}, // dot
-    {{{ 32767, 1, 32767, 0 }}}, // dot
-    {{{ 32767, 0, 32767, 0 }}}, // SPACE
-    // P : dot, dash, dash, dot
-    {{{ 32767, 1, 32767, 0 }}}, // dot
+
+};
+
+static const rmt_item32_t tone_zero[] = {
+	//Zeros one long tone
     {{{ 32767, 1, 32767, 1 }}},
     {{{ 32767, 1, 32767, 0 }}}, // dash
-    {{{ 32767, 1, 32767, 1 }}},
-    {{{ 32767, 1, 32767, 0 }}}, // dash
-    {{{ 32767, 1, 32767, 0 }}}, // dot
+	 {{{ 32767, 0, 32767, 0 }}}, // SPACE
     // RMT end marker
     {{{ 0, 1, 0, 0 }}}
 };
+
+
 
 
 static double calcRssiToMeter(uint8_t distanceMeter, int8_t rssi_received, int8_t txPower,  uint8_t envFactor ){
@@ -453,17 +471,39 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event,
 						connect = true;
 						ESP_LOGI(GATTC_TAG, "connect to the remote device.");
 						rssi_received = scan_result->scan_rst.rssi;
-						if(rssi_received != 0){
-							distanceMeter = calcRssiToMeter(distanceMeter, rssi_received,  txPower,  envFactor );
+						if (rssi_received != 0) {
+							distanceMeter = calcRssiToMeter(distanceMeter,
+									rssi_received, txPower, envFactor);
 
-							single = distanceMeter%10;
+							single = distanceMeter % 10;
 							tens = distanceMeter - single;
 
 							ESP_LOGI(GATTC_TAG, "Meter: %d", distanceMeter);
 
-							 ESP_ERROR_CHECK(rmt_write_items(RMT_TX_CHANNEL, morse_esp, sizeof(morse_esp) / sizeof(morse_esp[0]), true));
-							        ESP_LOGI(TAG, "Transmission complete");
-							        vTaskDelay(1000 / portTICK_PERIOD_MS);
+							if (tens == 0) {
+								ESP_ERROR_CHECK(
+										rmt_write_items(RMT_TX_CHANNEL, tone_zero, sizeof(tone_zero) / sizeof(tone_zero[0]), true));
+							} else {
+								for (uint8_t i = 0; i < tens; i++) {
+									ESP_ERROR_CHECK(
+											rmt_write_items(RMT_TX_CHANNEL, tone_single, sizeof(tone_single) / sizeof(tone_single[0]), true));
+								}
+							}
+
+							if (single == 0) {
+								ESP_ERROR_CHECK(
+										rmt_write_items(RMT_TX_CHANNEL, tone_zero, sizeof(tone_zero) / sizeof(tone_zero[0]), true));
+							} else {
+								for (uint8_t i = 0; i < single; i++) {
+									ESP_ERROR_CHECK(
+											rmt_write_items(RMT_TX_CHANNEL, tone_single, sizeof(tone_single) / sizeof(tone_single[0]), true));
+								}
+							}
+
+							//	 ESP_ERROR_CHECK(rmt_write_items(RMT_TX_CHANNEL, morse_esp, sizeof(morse_esp) / sizeof(morse_esp[0]), true));
+							// ESP_ERROR_CHECK(rmt_write_items(RMT_TX_CHANNEL, morse_esp, sizeof(morse_esp) / sizeof(morse_esp[0]), true));
+							ESP_LOGI(TAG, "Transmission complete");
+							vTaskDelay(1000 / portTICK_PERIOD_MS);
 						}
 						ESP_LOGI(GATTC_TAG, "RSSI: %d", rssi_received);
 						esp_ble_gap_stop_scanning();
