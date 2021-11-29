@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 #include "nvs.h"
 #include "nvs_flash.h"
 
@@ -13,6 +14,8 @@
 #include "esp_gatt_common_api.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/rmt.h"
 
 #define GATTC_TAG "BLE DEMO"
 #define REMOTE_SERVICE_UUID        0x180F //Batter Service
@@ -20,18 +23,32 @@
 #define PROFILE_NUM      1
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE   0
+#define RMT_TX_CHANNEL RMT_CHANNEL_0
+#define RMT_TX_GPIO_NUM (4)
 
 static bool connect = false;
 static bool get_server = false;
 static esp_gattc_char_elem_t *char_elem_result = NULL;
 static esp_gattc_descr_elem_t *descr_elem_result = NULL;
+static const char *TAG = "example";
+static const rmt_item32_t morse_esp[];
+
+
+
 
 //MetaWearC MAC Adress EB:76:BC:F0:C2:6F
 uint8_t remote_adress[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 uint8_t device_adress[] = { 0xEB, 0x76, 0xBC, 0xF0, 0xC2, 0x6F };
+
 uint8_t eq_adr = 1;
 int8_t rssi_received = 0;
+uint8_t distanceMeter = 0;
+int8_t txPower = -78;	//dBm set in the Metawear App
+uint8_t envFactor = 2; //Range 2-4, set to 2 for freespace
 esp_bd_addr_t bd;
+uint8_t tens = 0;
+uint8_t single = 0;
+
 
 /* Declare static functions */
 static void esp_gap_cb(esp_gap_ble_cb_event_t event,
@@ -50,6 +67,10 @@ static esp_bt_uuid_t remote_filter_char_uuid = { .len = ESP_UUID_LEN_16, .uuid =
 static esp_bt_uuid_t notify_descr_uuid = { .len = ESP_UUID_LEN_16, .uuid = {
 		.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG, }, };
 
+static double calcRssiToMeter(uint8_t distanceMeter, int8_t rssi_received, int8_t txPower,  uint8_t envFactor);
+
+
+
 struct gattc_profile_inst {
 	esp_gattc_cb_t gattc_cb;
 	uint16_t gattc_if;
@@ -60,6 +81,51 @@ struct gattc_profile_inst {
 	uint16_t char_handle;
 	esp_bd_addr_t remote_bda;
 };
+
+static const rmt_item32_t morse_esp[] = {
+    // E: dot
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    {{{ 32767, 0, 32767, 0 }}}, // SPACE
+    // S : dot, dot, dot
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    {{{ 32767, 0, 32767, 0 }}}, // SPACE
+    // P : dot, dash, dash, dot
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    {{{ 32767, 1, 32767, 1 }}},
+    {{{ 32767, 1, 32767, 0 }}}, // dash
+    {{{ 32767, 1, 32767, 1 }}},
+    {{{ 32767, 1, 32767, 0 }}}, // dash
+    {{{ 32767, 1, 32767, 0 }}}, // dot
+    // RMT end marker
+    {{{ 0, 1, 0, 0 }}}
+};
+
+
+static double calcRssiToMeter(uint8_t distanceMeter, int8_t rssi_received, int8_t txPower,  uint8_t envFactor ){
+	distanceMeter= pow(10, ((double) txPower - rssi_received) / (10 * envFactor));
+	return distanceMeter;
+}
+
+static void rmt_tx_init(void)
+{
+   rmt_config_t config = RMT_DEFAULT_CONFIG_TX(RMT_TX_GPIO_NUM, RMT_TX_CHANNEL);
+   // enable the carrier to be able to hear the Morse sound
+   // if the RMT_TX_GPIO is connected to a speaker
+   config.tx_config.carrier_en = true;
+   config.tx_config.carrier_duty_percent = 50;
+   // set audible career frequency of 611 Hz
+   // actually 611 Hz is the minimum, that can be set
+   // with current implementation of the RMT API
+   config.tx_config.carrier_freq_hz = 611;
+   // set the maximum clock divider to be able to output
+   // RMT pulses in range of about one hundred milliseconds
+   config.clk_div = 255;
+
+   ESP_ERROR_CHECK(rmt_config(&config));
+   ESP_ERROR_CHECK(rmt_driver_install(config.channel, 0, 0));
+}
 
 static esp_ble_scan_params_t ble_scan_params = { .scan_type =
 		BLE_SCAN_TYPE_ACTIVE, .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
@@ -387,6 +453,18 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event,
 						connect = true;
 						ESP_LOGI(GATTC_TAG, "connect to the remote device.");
 						rssi_received = scan_result->scan_rst.rssi;
+						if(rssi_received != 0){
+							distanceMeter = calcRssiToMeter(distanceMeter, rssi_received,  txPower,  envFactor );
+
+							single = distanceMeter%10;
+							tens = distanceMeter - single;
+
+							ESP_LOGI(GATTC_TAG, "Meter: %d", distanceMeter);
+
+							 ESP_ERROR_CHECK(rmt_write_items(RMT_TX_CHANNEL, morse_esp, sizeof(morse_esp) / sizeof(morse_esp[0]), true));
+							        ESP_LOGI(TAG, "Transmission complete");
+							        vTaskDelay(1000 / portTICK_PERIOD_MS);
+						}
 						ESP_LOGI(GATTC_TAG, "RSSI: %d", rssi_received);
 						esp_ble_gap_stop_scanning();
 						esp_ble_gattc_open(
@@ -469,6 +547,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
 //Programs entry point
 
 void app_main() {
+
+
 	// Initialize Non-Volatile-Storage
 	esp_err_t ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -509,6 +589,10 @@ void app_main() {
 		return;
 	}
 
+
+	//Inizialize RMT
+	 ESP_LOGI(TAG, "Configuring transmitter");
+	 rmt_tx_init();
 
 
 	//register the  callback function to the gap module, takes care of scanning and connection to servers
