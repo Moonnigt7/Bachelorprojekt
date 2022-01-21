@@ -6,3 +6,10 @@ int begin_duration[] = {250, 125, 125, 250, 250, 250, 250, 250, 4000};
 
 int meter_tone[] = {NOTE_DS5, REST};
 int meter_duration[] = {500, 500};
+
+int search_tone[] = {NOTE_GS5, NOTE_A5,NOTE_GS5, NOTE_A5,  REST};
+int search_duration[] ={250, 250, 250,  250, 125};
+
+
+int found_tone[] = {NOTE_E4, NOTE_E4, REST, NOTE_E4, REST};
+int found_duration[] ={250, 250, 250,  250, 125};
