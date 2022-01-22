@@ -11,7 +11,7 @@
 
 //Variables for scan and connections
 static boolean connection =  false;
-static boolean connected_ = false;
+static boolean isConnected = false;
 static boolean search = false;
 bool connected = false;
 
@@ -117,13 +117,13 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks
 class MyClientCallback : public BLEClientCallbacks {
     void onConnect(BLEClient* pclient) {
       Serial.println("Verbunden");
-      connected_ = true;
+      isConnected = true;
       connection = false;
       search = false;
     }
 
     void onDisconnect(BLEClient* pclient) {
-      connected_ = false;
+      isConnected = false;
       connection = false;
       search = true;
       Serial.println("Verbindung verloren");
@@ -226,7 +226,7 @@ void loop() {
   }
 
 
-  if (connected_) // Paired with searched device
+  if (isConnected) // Paired with searched device
   {
     delay(200);
 
