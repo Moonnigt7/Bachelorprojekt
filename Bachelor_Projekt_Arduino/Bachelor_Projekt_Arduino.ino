@@ -208,6 +208,7 @@ void loop() {
   if (search)  {
     searching();
     pBLEScan->start(scanTime);
+    
     delay(100);
   }
 
