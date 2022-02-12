@@ -1,0 +1,32 @@
+System Usability Scale 
+© Digital Equipment Corporation, 1986. 
+Stimme gar nicht zu Stimme voll zu 
+1. Ich kann mir sehr gut vorstellen das Gerät 
+regelmäßig zu nutzen. 
+1 2 3 4 X5 
+2. Ich empfinde das Gerät als unnötig komplex. 
+X1 2 3 4 5 
+3. Ich denke das Gerät ist einfach zu benutzen. 
+1 2 3 4 X5 
+4. Ich denke, dass ich technischen Support 
+brauchen würde um das Gerät zu benutzen 
+X1 2 3 4 5 
+5. Ich finde, dass die verschiedenen Funktionen des 
+Gerätes gut integriert sind. 
+1 2 3 4 X5 
+6. Ich denke, dass es bei dem Gerät zu viele 
+Inkonsistenzen gibt. 
+X1 2 3 4 5 
+7. Ich kann mir vorstellen, dass die meisten Leute das 
+System schnell beherrschen lernen. 
+1 2 3 4 X5 
+8. Ich empfinde die Bedienung des Gerätes 
+als sehr umständlich. 
+X1 2 3 4 5 
+9. Ich habe mich bei der Benutzung des Gerätes 
+sehr sicher gefühlt. 
+1 2 3 X4 5 
+10. Ich musste eine Menge Dinge lernen, bevor 
+ich mit dem Gerät arbeiten konnte. 
+1 X2 3 4 5 
+
