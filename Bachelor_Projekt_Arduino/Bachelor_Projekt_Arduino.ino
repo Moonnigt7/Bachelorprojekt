@@ -47,9 +47,9 @@ int found_num = 0;
 boolean buzz = false;
 
 //Buttons
-const int BUTTON_Meta = 18;
+const int BUTTON_Meta = 22;
 const int BUTTON_Giga = 23;
-const int BUTTON_Paw_b = 22;
+const int BUTTON_Paw_b = 18;
 
 //Buttonstates
 volatile int BUTTON_state_Meta = 1;
